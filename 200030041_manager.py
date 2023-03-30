@@ -10,7 +10,7 @@ Manager_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # server ip and port
 server_ip = 'localhost'
-server_port = 8080
+server_port = 4000
 
 # bind serversocket to the port
 Manager_socket.bind((server_ip, server_port))
@@ -20,23 +20,36 @@ active_peers = []
 
 # listen for incoming connections
 Manager_socket.listen(1)
-print('Manager is listening for incoming connections')
+print('Manager is listening for incoming connections................\n')
 
 
-def new_peer_joined(peer_socket, peer_address):
-    active_peers.append((peer_socket, peer_address))
+def check_peer_username(peer_username):
+    for peer in active_peers:
+        if peer[2] == peer_username:
+            return True
+    return False
+
+def new_peer_joined(peer_socket, peer_address, peer_username):
+    global active_peers
+
+    while(check_peer_username(peer_username)):
+        peer_socket.send('Error in name'.encode())
+        peer_username = peer_socket.recv(1024).decode().split(';')[1]
+
+    active_peers.append((peer_socket, peer_address, peer_username))
 
     print("New peer joined the network: ", peer_address)
-    updated_peer_list = json.dumps([peer[1] for peer in active_peers])
+    updated_peer_list = json.dumps(
+        [(peer[1], peer[2]) for peer in active_peers])
 
     for peer in active_peers:
         try:
             peer[0].send('update_peer_list'.encode())
-            time.sleep(0.5)
+            time.sleep(0.1)
             peer[0].send(updated_peer_list.encode())
-            print("sent updated list to peer: ", peer[1])
+            print("sent updated list to peer: ", (peer[1], peer[2]))
         except (socket.error):
-            print("Peer is no longer active: ", peer[1])
+            print("Peer is no longer active: ", (peer[1], peer[2]))
             continue
 
 
@@ -47,8 +60,9 @@ while True:
 
     print("message: ", message)
 
-    if (message == 'Hello'):
+    if (message.split(';')[0] == 'Hello'):
         thread_A = Thread(target=new_peer_joined,
-                          args=(peer_socket, peer_address))
+                          args=(peer_socket, peer_address, message.split(';')[1]))
         thread_A.start()
         thread_A.join()
+        continue
