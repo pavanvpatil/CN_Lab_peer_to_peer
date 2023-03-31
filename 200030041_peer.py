@@ -1,6 +1,7 @@
 # socket programming in TCP for peer
 import socket
 import time
+from time import clock_settime
 from threading import Thread
 import json
 import sys
@@ -30,12 +31,15 @@ peer_address = ('localhost', port)
 name = input("Enter your name: ")
 
 
-def recieve_file_chunks(conn_peer_socket, offset, size_of_chunk):
-    conn_peer_socket.send(
-        ('file_required;'+str(size_of_chunk)+';'+str(offset)).encode())
-    time.sleep(0.1)
-    data = conn_peer_socket.recv(size_of_chunk)
-    return data
+def recieve_file_chunks(conn_peer_socket, offset, number_of_chunks, size_of_chunk, file_data, index):
+    for i in range(number_of_chunks):
+        conn_peer_socket.send(
+            ('file_required;'+str(size_of_chunk)+';'+str(offset)).encode())
+        # conn_peer_socket.settimeout(5)
+        data = conn_peer_socket.recv(size_of_chunk)
+        file_data[index] = data
+        offset = offset + size_of_chunk
+        index = index + 1
 
 
 def ask_and_recieve_file(file_name):
@@ -66,20 +70,45 @@ def ask_and_recieve_file(file_name):
     else:
         print(len(peer_with_file))
         print("File found, downloading............")
-        file = open("peername-"+name+"/"+file_name, 'wb')
-        size_of_chunk = int(size_of_file/len(peer_with_file))
+        number_of_chunks = 100
+        size_of_chunk = int(size_of_file/number_of_chunks)
+        if (size_of_file % number_of_chunks != 0):
+            number_of_chunks = number_of_chunks + 1
+        if (size_of_file < 100):
+            size_of_chunk = size_of_file
         offset = 0
         sum_of_chunks = 0
+        threads = []
+        file_data = [b'' for i in range(number_of_chunks)]
+        peer_number_of_chunks = [0 for i in range(len(peer_with_file))]
+        index = 0
+
         for peer in range(len(peer_with_file)):
-            if (peer == len(peer_with_file)-1):
-                size_of_chunk = size_of_file - sum_of_chunks
-            data = recieve_file_chunks(
-                peer_with_file[peer], offset, size_of_chunk)
-            file.write(data)
-            offset = offset + size_of_chunk
-            sum_of_chunks = sum_of_chunks + size_of_chunk
-            peer_with_file[peer].close()
+            peer_number_of_chunks[peer] = int(
+                number_of_chunks/len(peer_with_file))
+            sum_of_chunks = sum_of_chunks + peer_number_of_chunks[peer]
+
+        if (sum_of_chunks < number_of_chunks):
+            peer_number_of_chunks[0] = peer_number_of_chunks[0] + \
+                (number_of_chunks - sum_of_chunks)
+
+        for peer in range(len(peer_with_file)):
+            t = Thread(target=recieve_file_chunks, args=(
+                peer_with_file[peer], offset, peer_number_of_chunks[peer], size_of_chunk, file_data, index))
+            t.start()
+            threads.append(t)
+            offset = offset + peer_number_of_chunks[peer]*size_of_chunk
+            index = index + peer_number_of_chunks[peer]
+
+        for i in range(len(threads)):
+            threads[i].join()
+
+        file = open("peername-"+name+"/"+file_name, 'wb')
+        for i in range(number_of_chunks):
+            file.write(file_data[i])
         file.close()
+        print("File downloaded successfully")
+        return
 
 
 def peer_features(manager_peer_socket):
