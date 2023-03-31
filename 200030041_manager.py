@@ -38,13 +38,16 @@ def new_peer_joined(peer_socket, peer_address, peer_username):
         peer_username = peer_socket.recv(1024).decode()
         peer_username = peer_username.split(';')[1]
 
+    time.sleep(0.1)
     peer_socket.send('Name accepted'.encode())
+    print("Name accepted: ", peer_username)
+    time.sleep(0.1)
+    peer_address_temp = (peer_address[0], int(peer_socket.recv(1024).decode()))
 
-    active_peers.append((peer_socket, peer_address, peer_username))
+    active_peers.append((peer_socket, peer_address_temp, peer_username))
 
-    print("New peer joined the network: ", peer_address)
-    updated_peer_list = json.dumps(
-        [(peer[1], peer[2]) for peer in active_peers])
+    print("New peer joined the network: ", peer_address_temp, peer_username)
+    updated_peer_list = json.dumps([(peer[1], peer[2]) for peer in active_peers])
 
     for peer in active_peers:
         try:
@@ -57,15 +60,14 @@ def new_peer_joined(peer_socket, peer_address, peer_username):
             continue
 
 
-def peer_leave(peer_socket, peer_address):
+def peer_leave(peer_socket):
     global active_peers
 
     for peer in active_peers:
-        if peer[1] == peer_address:
+        if peer[0] == peer_socket:
             active_peers.remove(peer)
-            print("Peer left the network: ", peer_address)
-            updated_peer_list = json.dumps(
-                [(peer[1], peer[2]) for peer in active_peers])
+            print("Peer left the network: ", peer[2])
+            updated_peer_list = json.dumps([(peer[1], peer[2]) for peer in active_peers])
             for peer in active_peers:
                 try:
                     peer[0].send('update_peer_list'.encode())
@@ -90,14 +92,13 @@ def start_peer_listen(peer_socket, peer_address):
             continue
 
         if (message == 'exit'):
-            print("peer left the network", peer_address)
             peer_socket.send('exit'.encode())
-            peer_leave(peer_socket, peer_address)
+            time.sleep(0.1)
+            peer_leave(peer_socket)
             break
 
         if message == "":
-            print("peer left the network", peer_address)
-            peer_leave(peer_socket, peer_address)
+            peer_leave(peer_socket)
             break
 
 
