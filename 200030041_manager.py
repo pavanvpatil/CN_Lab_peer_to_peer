@@ -1,5 +1,9 @@
 # socket programming for tcp server
 
+# author: 200030041 Pavan Kumar V Patil
+# date: 1/4/2023
+# course: Computer Networks CS348
+
 import socket
 from threading import Thread
 import json

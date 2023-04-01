@@ -1,7 +1,12 @@
 # socket programming in TCP for peer
+
+# author: 200030041 Pavan Kumar V Patil
+# date: 1/4/2023
+# course: Computer Networks CS348
+
+
 import socket
 import time
-from time import clock_settime
 from threading import Thread
 import json
 import sys
