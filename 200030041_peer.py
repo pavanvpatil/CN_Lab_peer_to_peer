@@ -266,6 +266,8 @@ def main(manager_peer_socket, manager_address):
             continue
 
         if message == 'Error in name':
+            print(Fore.RED+"Name already exists for another peer")
+            print(Fore.RESET)
             name = input("Re-Enter your name: ")
             manager_peer_socket.send(('Hello;' + name).encode())
             continue
