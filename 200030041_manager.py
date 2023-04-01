@@ -101,8 +101,35 @@ def start_peer_listen(peer_socket, peer_address):
             peer_leave(peer_socket)
             break
 
+def background_ping():
+    global active_peers
+    while True:
+        print("checking for active peers...............")
+        for peer in active_peers:
+            try:
+                socket_temp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                socket_temp.settimeout(2)
+                socket_temp.connect(peer[1])
+                socket_temp.send('ping'.encode())
+                time.sleep(0.1)
+                socket_temp.recv(1024).decode()
+                socket_temp.close()
+            except (socket.error or socket.timeout):
+                print("Peer is no longer active: ", (peer[1], peer[2]))
+                peer_leave(peer[0])
+                continue
+        time.sleep(10)
 
-while True:
-    (peer_socket, peer_address) = Manager_socket.accept()
-    thread = Thread(target=start_peer_listen, args=(peer_socket, peer_address))
-    thread.start()
+
+def start_server():
+    thread_background = Thread(target=background_ping)
+    thread_background.daemon = True
+    thread_background.start()
+
+    while True:
+        (peer_socket, peer_address) = Manager_socket.accept()
+        thread = Thread(target=start_peer_listen, args=(peer_socket, peer_address))
+        thread.start()
+
+
+start_server()

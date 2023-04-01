@@ -167,6 +167,11 @@ def peer_server_handler(conn_peer_socket):
             file.close()
             continue
 
+        if message == 'ping':
+            conn_peer_socket.send('pong'.encode())
+            conn_peer_socket.close()
+            break
+
 
 def peer_server(peer_socket):
     peer_socket.listen(20)
