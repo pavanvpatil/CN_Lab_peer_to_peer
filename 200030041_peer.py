@@ -7,6 +7,7 @@ import json
 import sys
 import os
 import shutil
+import random
 
 manager_peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -31,15 +32,48 @@ peer_address = ('localhost', port)
 name = input("Enter your name: ")
 
 
-def recieve_file_chunks(conn_peer_socket, offset, number_of_chunks, size_of_chunk, file_data, index):
+def recieve_file_chunks(conn_peer_socket, offset, number_of_chunks, size_of_chunk, file_data, index,error_index):
     for i in range(number_of_chunks):
-        conn_peer_socket.send(
-            ('file_required;'+str(size_of_chunk)+';'+str(offset)).encode())
-        # conn_peer_socket.settimeout(5)
-        data = conn_peer_socket.recv(size_of_chunk)
-        file_data[index] = data
-        offset = offset + size_of_chunk
-        index = index + 1
+        try:
+            conn_peer_socket.send(('file_required;'+str(size_of_chunk)+';'+str(offset)).encode())
+            conn_peer_socket.settimeout(5)
+            data = conn_peer_socket.recv(size_of_chunk)
+            file_data[index] = data
+            offset = offset + size_of_chunk
+            index = index + 1
+        except(socket.timeout or socket.error):
+            error_index.append((conn_peer_socket, index, offset, size_of_chunk))
+            return
+
+def check_and_correct_file_data(file_data, error_index,peer_with_file):
+    while len(error_index) != 0:
+        for error in error_index:
+            peer_with_file.remove(error[0])
+
+        if(len(peer_with_file) == 0):
+            print("File downloading failed")
+            return
+        
+
+        temp_error_index = []
+        for error in error_index:
+            conn_peer_socket = random.choice(peer_with_file)
+            index = error[1]
+            offset = error[2]
+            size_of_chunk = error[3]
+            try:
+                conn_peer_socket.send(('file_required;'+str(size_of_chunk)+';'+str(offset)).encode())
+                conn_peer_socket.settimeout(5)
+                data = conn_peer_socket.recv(size_of_chunk)
+                file_data[index] = data
+                error_index.remove(error)
+            except(socket.timeout or socket.error):
+                temp_error_index.append((conn_peer_socket, index, offset, size_of_chunk))
+                continue
+
+        error_index = temp_error_index
+
+    
 
 
 def ask_and_recieve_file(file_name):
@@ -92,9 +126,10 @@ def ask_and_recieve_file(file_name):
             peer_number_of_chunks[0] = peer_number_of_chunks[0] + \
                 (number_of_chunks - sum_of_chunks)
 
+        error_index = []
+
         for peer in range(len(peer_with_file)):
-            t = Thread(target=recieve_file_chunks, args=(
-                peer_with_file[peer], offset, peer_number_of_chunks[peer], size_of_chunk, file_data, index))
+            t = Thread(target=recieve_file_chunks, args=(peer_with_file[peer], offset, peer_number_of_chunks[peer], size_of_chunk, file_data, index, error_index))
             t.start()
             threads.append(t)
             offset = offset + peer_number_of_chunks[peer]*size_of_chunk
@@ -103,6 +138,12 @@ def ask_and_recieve_file(file_name):
         for i in range(len(threads)):
             threads[i].join()
 
+        if(len(error_index) != 0):
+            check_and_correct_file_data(file_data, error_index,peer_with_file)
+
+        if(len(peer_with_file) == 0):
+            return
+        
         file = open("peername-"+name+"/"+file_name, 'wb')
         for i in range(number_of_chunks):
             file.write(file_data[i])
@@ -141,7 +182,6 @@ def peer_server_handler(conn_peer_socket):
             message = message.split(';')
             file_name = message[1]
             if os.path.isfile("./peername-"+name+"/"+file_name):
-                print(file_name)
                 conn_peer_socket.send('file_found'.encode())
                 time.sleep(0.1)
                 size_of_file = os.path.getsize("peername-"+name+"/"+file_name)
@@ -162,7 +202,6 @@ def peer_server_handler(conn_peer_socket):
             file = open("peername-"+name+"/"+file_name, 'rb')
             file.seek(offset)
             data = file.read(no_of_bytes)
-            print(data)
             conn_peer_socket.send(data)
             file.close()
             continue
