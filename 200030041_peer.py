@@ -168,6 +168,9 @@ def peer_features(manager_peer_socket):
 
         if choice == '1':
             file_name = input("Enter file name: ")
+            if(os.path.isfile("./peername-"+name+"/"+file_name)):
+                print("File already exists")
+                continue
             ask_and_recieve_file(file_name)
             continue
         elif choice == '2':

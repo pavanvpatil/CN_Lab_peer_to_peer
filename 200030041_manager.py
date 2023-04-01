@@ -23,7 +23,7 @@ Manager_socket.bind((server_ip, server_port))
 active_peers = []
 
 # listen for incoming connections
-Manager_socket.listen(1)
+Manager_socket.listen(10)
 print('Manager is listening for incoming connections................\n')
 
 
