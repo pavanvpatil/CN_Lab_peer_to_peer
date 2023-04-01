@@ -13,6 +13,7 @@ import sys
 import os
 import shutil
 import random
+from colorama import Fore
 
 manager_peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,7 +28,8 @@ while True:
         peer_socket.bind(('localhost', port))
         break
     except:
-        print("Port already in use")
+        print(Fore.RED+"Port already in use")
+        print(Fore.RESET)
         port = int(input("Re-Enter your port: "))
         continue
 
@@ -56,7 +58,8 @@ def check_and_correct_file_data(file_data, error_index,peer_with_file):
             peer_with_file.remove(error[0])
 
         if(len(peer_with_file) == 0):
-            print("File downloading failed")
+            print(Fore.RED+"File downloading failed")
+            print(Fore.RESET)
             return
         
 
@@ -104,10 +107,11 @@ def ask_and_recieve_file(file_name):
             continue
 
     if len(peer_with_file) == 0:
-        print("File not found")
+        print(Fore.RED+"File not found")
+        print(Fore.RESET)
         return
     else:
-        print(len(peer_with_file))
+        print(len(peer_with_file), " peers have the file")
         print("File found, downloading............")
         number_of_chunks = 100
         size_of_chunk = int(size_of_file/number_of_chunks)
@@ -160,24 +164,35 @@ def ask_and_recieve_file(file_name):
 def peer_features(manager_peer_socket):
     global name
     while True:
-        print("Username: ", name)
-        print("\nChoose an option: ")
+        print("\n/**************Username: " + name + "**************/")
+        print("Choose an option: ")
         print("1. Ask for file")
-        print("2. Exit")
+        print("2. List all available files")
+        print("3. Exit")
         choice = input("Enter your choice: ")
 
         if choice == '1':
             file_name = input("Enter file name: ")
             if(os.path.isfile("./peername-"+name+"/"+file_name)):
-                print("File already exists")
+                print(Fore.RED+"File already exists")
+                print(Fore.RESET)
                 continue
             ask_and_recieve_file(file_name)
             continue
         elif choice == '2':
+            available_files = os.listdir("./peername-"+name)
+            print("\n")
+            print("Available files: ")
+            for file in available_files:
+                print(file)
+            print("\n")
+            continue
+        elif choice == '3':
             manager_peer_socket.send('exit'.encode())
             sys.exit(0)
         else:
-            print("/---------Invalid choice---------/\n\n\n")
+            print(Fore.RED+"/---------Invalid choice---------/\n")
+            print(Fore.RESET)
             continue
 
 
@@ -264,12 +279,14 @@ def main(manager_peer_socket, manager_address):
             continue
 
         if message == 'exit':
-            print("Exiting............")
+            print(Fore.RED+"Exiting............")
+            print(Fore.RESET)
             shutil.rmtree("peername-"+name)
             os.kill(os.getpid(), 9)
 
         if message == '':
-            print("Some thing gone wrong, Exiting............")
+            print(Fore.RED+"Some thing gone wrong, Exiting............")
+            print(Fore.RESET)
             shutil.rmtree("peername-"+name)
             os.kill(os.getpid(), 9)
 
