@@ -50,12 +50,25 @@ def recieve_file_chunks(conn_peer_socket, offset, number_of_chunks, size_of_chun
             index = index + 1
         except(socket.timeout or socket.error):
             error_index.append((conn_peer_socket, index, offset, size_of_chunk))
-            return
+            offset = offset + size_of_chunk
+            index = index + 1
+            continue
+        except:
+            error_index.append((conn_peer_socket, index, offset, size_of_chunk))
+            offset = offset + size_of_chunk
+            index = index + 1
+            continue
 
 def check_and_correct_file_data(file_data, error_index,peer_with_file):
     while len(error_index) != 0:
-        for error in error_index:
-            peer_with_file.remove(error[0])
+        for error in range(len(error_index)):
+            if error_index[error][0] in peer_with_file:
+                try:
+                    peer_with_file.remove(error_index[error][0])
+                    error_index[error][0].send('close'.encode())
+                    error_index[error][0].close()
+                except:
+                    continue
 
         if(len(peer_with_file) == 0):
             print(Fore.RED+"File downloading failed")
@@ -64,19 +77,21 @@ def check_and_correct_file_data(file_data, error_index,peer_with_file):
         
 
         temp_error_index = []
-        for error in error_index:
-            conn_peer_socket = random.choice(peer_with_file)
-            index = error[1]
-            offset = error[2]
-            size_of_chunk = error[3]
+        for error in range(len(error_index)):
+            peer = random.randint(0, len(peer_with_file)-1)
+            index = error_index[error][1]
+            offset = error_index[error][2]
+            size_of_chunk = error_index[error][3]
             try:
-                conn_peer_socket.send(('file_required;'+str(size_of_chunk)+';'+str(offset)).encode())
-                conn_peer_socket.settimeout(5)
-                data = conn_peer_socket.recv(size_of_chunk)
+                peer_with_file[peer].send(('file_required;'+str(size_of_chunk)+';'+str(offset)).encode())
+                peer_with_file[peer].settimeout(5)
+                data = peer_with_file[peer].recv(size_of_chunk)
                 file_data[index] = data
-                error_index.remove(error)
             except(socket.timeout or socket.error):
-                temp_error_index.append((conn_peer_socket, index, offset, size_of_chunk))
+                temp_error_index.append((peer_with_file[peer], index, offset, size_of_chunk))
+                continue
+            except:
+                temp_error_index.append((peer_with_file[peer], index, offset, size_of_chunk))
                 continue
 
         error_index = temp_error_index
@@ -113,11 +128,11 @@ def ask_and_recieve_file(file_name):
     else:
         print(len(peer_with_file), " peers have the file")
         print("File found, downloading............")
-        number_of_chunks = 100
-        size_of_chunk = int(size_of_file/number_of_chunks)
-        if (size_of_file % number_of_chunks != 0):
+        size_of_chunk = 1024
+        number_of_chunks = int(size_of_file/size_of_chunk)
+        if (size_of_file % size_of_chunk != 0):
             number_of_chunks = number_of_chunks + 1
-        if (size_of_file < 100):
+        if (size_of_file < 1024):
             size_of_chunk = size_of_file
         offset = 0
         sum_of_chunks = 0
@@ -146,18 +161,29 @@ def ask_and_recieve_file(file_name):
 
         for i in range(len(threads)):
             threads[i].join()
-
+        
         if(len(error_index) != 0):
             check_and_correct_file_data(file_data, error_index,peer_with_file)
 
         if(len(peer_with_file) == 0):
             return
         
-        file = open("peername-"+name+"/"+file_name, 'wb')
-        for i in range(number_of_chunks):
-            file.write(file_data[i])
-        file.close()
-        print("File downloaded successfully")
+        try:
+            file = open("peername-"+name+"/"+file_name, 'wb')
+            for i in range(number_of_chunks):
+                file.write(file_data[i])
+            file.close()
+            print("File downloaded successfully")
+        except:
+            print(Fore.RED+"File downloading failed")
+            print(Fore.RESET)
+
+        for peer in range(len(peer_with_file)):
+            try:
+                peer_with_file[peer].send('close'.encode())
+                peer_with_file[peer].close()
+            except:
+                continue
         return
 
 
@@ -214,7 +240,7 @@ def peer_server_handler(conn_peer_socket):
                 conn_peer_socket.send('file_not_found'.encode())
                 break
 
-        if message == 'file_not_required':
+        if message == 'file_not_required' or message == 'close':
             conn_peer_socket.close()
             break
 
@@ -222,11 +248,14 @@ def peer_server_handler(conn_peer_socket):
             message = message.split(';')
             no_of_bytes = int(message[1])
             offset = int(message[2])
-            file = open("peername-"+name+"/"+file_name, 'rb')
-            file.seek(offset)
-            data = file.read(no_of_bytes)
-            conn_peer_socket.send(data)
-            file.close()
+            try:
+                file = open("peername-"+name+"/"+file_name, 'rb')
+                file.seek(offset)
+                data = file.read(no_of_bytes)
+                conn_peer_socket.send(data)
+                file.close()
+            except:
+                continue
             continue
 
         if message == 'ping':
