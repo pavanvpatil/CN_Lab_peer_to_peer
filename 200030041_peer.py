@@ -1,4 +1,4 @@
-# socket programming in TCP for peer
+# socket programming of peer
 
 # author: 200030041 Pavan Kumar V Patil
 # date: 1/4/2023
@@ -40,6 +40,8 @@ name = input("Enter your name: ")
 
 
 def recieve_file_chunks(conn_peer_socket, offset, number_of_chunks, size_of_chunk, file_data, index,error_index):
+    """ This function is used to recieve the file chunks from the peer and store it in the file_data list. If the peer is not able to send the data then it will add the peer to the error_index list. """
+
     for i in range(number_of_chunks):
         try:
             conn_peer_socket.send(('file_required;'+str(size_of_chunk)+';'+str(offset)).encode())
@@ -60,6 +62,8 @@ def recieve_file_chunks(conn_peer_socket, offset, number_of_chunks, size_of_chun
             continue
 
 def check_and_correct_file_data(file_data, error_index,peer_with_file):
+    """ This function is used to check if the file data is correct or not and if not then it will correct it by requesting the peer to send the data again. Till the time the file data is correct it will keep on requesting the peer to send the data again."""
+
     while len(error_index) != 0:
         for error in range(len(error_index)):
             if error_index[error][0] in peer_with_file:
@@ -100,6 +104,10 @@ def check_and_correct_file_data(file_data, error_index,peer_with_file):
 
 
 def ask_and_recieve_file(file_name):
+    """This function asks for the file from the peers and recieves the file chunk by chunk 
+    from peers which have the file and then combines all the chunks to form the file and handles errors if any.
+    It recives file in parallel from multiple peers by using threads."""
+
     global active_peer_list
     global name
     print("Asking for file............")
@@ -188,6 +196,9 @@ def ask_and_recieve_file(file_name):
 
 
 def peer_features(manager_peer_socket):
+    """This function is used to display the options available to the peer and 
+    to perform the operations based on the user's choice"""
+
     global name
     while True:
         print("\n/**************Username: " + name + "**************/")
@@ -223,6 +234,9 @@ def peer_features(manager_peer_socket):
 
 
 def peer_server_handler(conn_peer_socket):
+    """ This function handles the peer server requests and sends the file to the peer chunk by chunk. 
+    It also handles the case when the file is not found. It also sends responds to the manager when ping message is received."""
+
     global name
     file_name = ''
     while True:
@@ -265,6 +279,8 @@ def peer_server_handler(conn_peer_socket):
 
 
 def peer_server(peer_socket):
+    """ This function starts the peer server and accepts connections from other peers for file transfer 
+    and puts them in different threads for file transfer"""
     peer_socket.listen(20)
     while True:
         conn_peer_socket, conn_peer_address = peer_socket.accept()
@@ -273,6 +289,9 @@ def peer_server(peer_socket):
 
 
 def main(manager_peer_socket, manager_address):
+    """ intially connect to manager and send name of peer. 
+    Then start peer server and peer features in different threads"""
+
     global name
     global active_peer_list
     global peer_address

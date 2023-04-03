@@ -1,4 +1,4 @@
-# socket programming for tcp server
+# socket programming of manager
 
 # author: 200030041 Pavan Kumar V Patil
 # date: 1/4/2023
@@ -22,12 +22,10 @@ Manager_socket.bind((server_ip, server_port))
 # list of active peers
 active_peers = []
 
-# listen for incoming connections
-Manager_socket.listen(10)
-print('Manager is listening for incoming connections................\n')
-
 
 def check_peer_username(peer_username):
+    """ This function is used to check if the username of the peer is already taken """
+
     for peer in active_peers:
         if peer[2] == peer_username:
             return True
@@ -35,6 +33,8 @@ def check_peer_username(peer_username):
 
 
 def new_peer_joined(peer_socket, peer_address, peer_username):
+    """ This function is used to add a new peer to the active peers list and update the active peers list of all the peers """
+
     global active_peers
 
     while (check_peer_username(peer_username)):
@@ -65,6 +65,8 @@ def new_peer_joined(peer_socket, peer_address, peer_username):
 
 
 def peer_leave(peer_socket):
+    """ This function is used to remove a peer from the active peers list and update the active peers list of all the peers """
+
     global active_peers
 
     for peer in active_peers:
@@ -87,6 +89,8 @@ def peer_leave(peer_socket):
 
 
 def start_peer_listen(peer_socket, peer_address):
+    """ This function is used to listen to particluar peer. It listens for messages from the peer and takes appropriate action """
+
     while True:
         message = peer_socket.recv(1024).decode()
         print("message: ", message)
@@ -106,6 +110,8 @@ def start_peer_listen(peer_socket, peer_address):
             break
 
 def background_ping():
+    """ This function is used to check for active peers, if a peer is not active, it is removed from the active peers list """
+
     global active_peers
     while True:
         print("checking for active peers...............")
@@ -126,10 +132,18 @@ def background_ping():
 
 
 def start_server():
+    """ Starts the server and starts listening to peers, when new peer joins, it creates a new thread for that peer
+     and it also starts a background thread to check for active peers """
+    
+
     thread_background = Thread(target=background_ping)
     thread_background.daemon = True
     thread_background.start()
 
+
+    # listen for incoming connections
+    Manager_socket.listen(10)
+    print('Manager is listening for incoming connections................\n')
     while True:
         (peer_socket, peer_address) = Manager_socket.accept()
         thread = Thread(target=start_peer_listen, args=(peer_socket, peer_address))
