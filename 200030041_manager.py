@@ -8,6 +8,8 @@ import socket
 from threading import Thread
 import json
 import time
+import signal
+import os
 
 # create a socket object
 Manager_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -149,5 +151,14 @@ def start_server():
         thread = Thread(target=start_peer_listen, args=(peer_socket, peer_address))
         thread.start()
 
+
+def signal_handler(sig, frame):
+    """ This function is used to handle the signal interrupt """
+
+    print('You pressed Ctrl+C!')
+    Manager_socket.close()
+    os.kill(os.getpid(), signal.SIGKILL)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 start_server()

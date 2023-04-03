@@ -14,6 +14,7 @@ import os
 import shutil
 import random
 from colorama import Fore
+import signal
 
 manager_peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -340,5 +341,15 @@ def main(manager_peer_socket, manager_address):
             shutil.rmtree("peername-"+name)
             os.kill(os.getpid(), 9)
 
+
+def signal_handler(sig, frame):
+    """This function handles the signal sent by the manager to exit the peer"""
+    print(Fore.RED+"Exiting............")
+    print(Fore.RESET)
+    shutil.rmtree("peername-"+name)
+    os.kill(os.getpid(), 9)
+
+
+signal.signal(signal.SIGINT, signal_handler)
 
 main(manager_peer_socket, manager_address)
